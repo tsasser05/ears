@@ -155,6 +155,8 @@ type SenderConfig struct {
 
 type Sender struct {
 	sync.Mutex
+	count               int
+	types               map[string]int
 	name                string
 	plugin              string
 	tid                 tenant.Id

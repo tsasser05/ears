@@ -25,6 +25,8 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/metric/unit"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/goccy/go-yaml"
@@ -61,6 +63,7 @@ func NewSender(tid tenant.Id, plugin string, name string, config interface{}, se
 		name:   name,
 		plugin: plugin,
 		tid:    tid,
+		types:  make(map[string]int),
 	}
 	switch s.config.Destination {
 	case DestinationDevNull:
@@ -118,7 +121,7 @@ func NewSender(tid tenant.Id, plugin string, name string, config interface{}, se
 
 func (s *Sender) Send(e event.Event) {
 	s.history.Add(e)
-	buf, err := json.Marshal(e.Payload())
+	buf, err := json.MarshalIndent(e.Payload(), "", "\t")
 	if err != nil {
 		s.eventFailureCounter.Add(e.Context(), 1)
 		e.Nack(err)
@@ -131,6 +134,33 @@ func (s *Sender) Send(e event.Event) {
 	if s.destination != nil {
 		start := time.Now()
 		err := s.destination.Write(e)
+		mediaType, _, _ := e.GetPathValue(".data.mediaType")
+		mediaTypeStr := mediaType.(string)
+		mediaTypeStr = strings.Replace(mediaTypeStr, "/", "-", -1)
+		if mediaTypeStr != "" {
+			s.Lock()
+			s.count++
+			_, ok := s.types[mediaTypeStr]
+			s.Unlock()
+			if !ok {
+				os.WriteFile(fmt.Sprintf("events/%s.json", mediaTypeStr), buf, 0644)
+				s.Lock()
+				s.types[mediaTypeStr] = 1
+				s.Unlock()
+			} else {
+				s.Lock()
+				s.types[mediaTypeStr] = s.types[mediaTypeStr] + 1
+				s.Unlock()
+			}
+		}
+		distr := make(map[string]float32)
+		s.Lock()
+		for k, v := range s.types {
+			distr[k] = float32(v) / float32(s.count)
+		}
+		s.Unlock()
+		distrStr, _ := json.MarshalIndent(distr, "", "\t")
+		fmt.Printf("%s\n", distrStr)
 		est := time.Since(start).Milliseconds()
 		s.eventSendOutTime.Record(e.Context(), est)
 		if err != nil {
