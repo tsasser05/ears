@@ -416,6 +416,7 @@ func (s *Sender) Send(e event.Event) {
 		return
 	}
 	s.getMetrics(s.getLabelValues(e, s.config.DynamicMetricLabels)).eventSuccessCounter.Add(e.Context(), 1)
+	log.Ctx(e.Context()).Info().Str("op", "kafkaSendDebug").Msg("messageSent")
 	s.Lock()
 	s.count++
 	log.Ctx(e.Context()).Debug().Str("op", "kafka.Send").Str("name", s.Name()).Str("tid", s.Tenant().ToString()).Int("count", s.count).Msg("sent message on kafka topic")
