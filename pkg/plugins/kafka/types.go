@@ -169,16 +169,20 @@ type SenderMetrics struct {
 
 type Sender struct {
 	sync.Mutex
-	name     string
-	plugin   string
-	tid      tenant.Id
-	config   SenderConfig
-	count    int
-	logger   *zerolog.Logger
-	producer *Producer
-	stopped  bool
-	secrets  secret.Vault
-	metrics  map[string]*SenderMetrics
+	name                string
+	plugin              string
+	tid                 tenant.Id
+	config              SenderConfig
+	count               int
+	logger              *zerolog.Logger
+	producer            *Producer
+	stopped             bool
+	secrets             secret.Vault
+	eventSuccessCounter metric.BoundInt64Counter
+	eventFailureCounter metric.BoundInt64Counter
+	eventBytesCounter   metric.BoundInt64Counter
+	eventProcessingTime metric.BoundInt64Histogram
+	eventSendOutTime    metric.BoundInt64Histogram
 }
 
 type ManualHashPartitioner struct {
