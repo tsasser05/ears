@@ -389,8 +389,8 @@ func (s *Sender) Send(e event.Event) {
 		e.Nack(err)
 		return
 	}
-	s.eventSuccessCounter.Add(e.Context(), 1)
 	s.Lock()
+	s.eventSuccessCounter.Add(e.Context(), 1)
 	s.count++
 	log.Ctx(e.Context()).Debug().Str("op", "kafka.Send").Str("name", s.Name()).Str("tid", s.Tenant().ToString()).Int("count", s.count).Msg("sent message on kafka topic")
 	s.Unlock()
