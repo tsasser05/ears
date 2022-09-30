@@ -22,6 +22,7 @@ import (
 	"github.com/xmidt-org/ears/pkg/secret"
 	"github.com/xmidt-org/ears/pkg/tenant"
 	"github.com/xorcare/pointer"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"sync"
 	"time"
@@ -136,7 +137,8 @@ type Sender struct {
 	logger              *zerolog.Logger
 	eventBatch          []event.Event
 	done                chan struct{}
-	eventSuccessCounter metric.BoundInt64Counter
+	commonLabels        []attribute.KeyValue
+	eventSuccessCounter metric.Int64Counter
 	eventFailureCounter metric.BoundInt64Counter
 	eventBytesCounter   metric.BoundInt64Counter
 	eventProcessingTime metric.BoundInt64Histogram

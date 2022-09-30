@@ -74,7 +74,7 @@ func NewSender(tid tenant.Id, plugin string, name string, config interface{}, se
 	s.initPlugin()
 	// metric recorders
 	meter := global.Meter(rtsemconv.EARSMeterName)
-	commonLabels := []attribute.KeyValue{
+	s.commonLabels = []attribute.KeyValue{
 		attribute.String(rtsemconv.EARSPluginTypeLabel, rtsemconv.EARSPluginTypeSQSSender),
 		attribute.String(rtsemconv.EARSPluginNameLabel, s.Name()),
 		attribute.String(rtsemconv.EARSAppIdLabel, s.tid.AppId),
@@ -85,30 +85,30 @@ func NewSender(tid tenant.Id, plugin string, name string, config interface{}, se
 		NewInt64Counter(
 			rtsemconv.EARSMetricEventSuccess,
 			metric.WithDescription("measures the number of successful events"),
-		).Bind(commonLabels...)
+		)
 	s.eventFailureCounter = metric.Must(meter).
 		NewInt64Counter(
 			rtsemconv.EARSMetricEventFailure,
 			metric.WithDescription("measures the number of unsuccessful events"),
-		).Bind(commonLabels...)
+		).Bind(s.commonLabels...)
 	s.eventBytesCounter = metric.Must(meter).
 		NewInt64Counter(
 			rtsemconv.EARSMetricEventBytes,
 			metric.WithDescription("measures the number of event bytes processed"),
 			metric.WithUnit(unit.Bytes),
-		).Bind(commonLabels...)
+		).Bind(s.commonLabels...)
 	s.eventProcessingTime = metric.Must(meter).
 		NewInt64Histogram(
 			rtsemconv.EARSMetricEventProcessingTime,
 			metric.WithDescription("measures the time an event spends in ears"),
 			metric.WithUnit(unit.Milliseconds),
-		).Bind(commonLabels...)
+		).Bind(s.commonLabels...)
 	s.eventSendOutTime = metric.Must(meter).
 		NewInt64Histogram(
 			rtsemconv.EARSMetricEventSendOutTime,
 			metric.WithDescription("measures the time ears spends to send an event to a downstream data sink"),
 			metric.WithUnit(unit.Milliseconds),
-		).Bind(commonLabels...)
+		).Bind(s.commonLabels...)
 	return s, nil
 }
 
@@ -163,7 +163,7 @@ func (s *Sender) Count() int {
 func (s *Sender) StopSending(ctx context.Context) {
 	s.Lock()
 	if s.done != nil {
-		s.eventSuccessCounter.Unbind()
+		//s.eventSuccessCounter.Unbind()
 		s.eventFailureCounter.Unbind()
 		s.eventBytesCounter.Unbind()
 		s.eventProcessingTime.Unbind()
@@ -229,7 +229,7 @@ func (s *Sender) send(events []event.Event) {
 		for _, successEvent := range output.Successful {
 			for _, evt := range events {
 				if evt.Id() == *successEvent.Id {
-					s.eventSuccessCounter.Add(evt.Context(), 1)
+					s.eventSuccessCounter.Add(evt.Context(), 1, s.commonLabels...)
 					evt.Ack()
 					s.Lock()
 					s.count++
